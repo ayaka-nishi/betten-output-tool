@@ -25,10 +25,14 @@ jobs:
             --add-data "証明書作成.py:." \
             --collect-all docx \
             app.py
+      - name: Zip .app with ditto (preserves symlinks correctly)
+        run: |
+          cd dist
+          ditto -c -k --keepParent BettenTool.app BettenTool-mac.zip
       - uses: actions/upload-artifact@v4
         with:
           name: mac-app
-          path: dist/BettenTool.app
+          path: dist/BettenTool-mac.zip
 
   build-windows:
     runs-on: windows-latest
