@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>別添1・別添2 出力ツール</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="bg-blob blob-1"></div>
+  <div class="bg-blob blob-2"></div>
+
+  <div class="page">
+    <header class="header">
+      <div class="header-icon">📋</div>
+      <div>
+        <h1>別添1・別添2 出力ツール</h1>
+        <p class="subtext">
+          「証明書まとめ（確認用）.xlsx」の J列（提出）が ○ の商品だけを対象に、
+          別添1（事業者ごとのWord証明書）と 別添2（全社まとめExcel）をまとめて作成します。
+        </p>
+      </div>
+    </header>
+
+    <section class="glass-card gov-card">
+      <div class="gov-field">
+        <label class="field-title">🏛️ 自治体</label>
+        <select id="govSelect">
+          {% for label in gov_labels %}
+          <option value="{{ label }}">{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="gov-field">
+        <label class="field-title">🖋️ 市長名（敬称なし・空欄可）</label>
+        <input type="text" id="mayorName" placeholder="例：齋藤　正美">
+      </div>
+      <p class="gov-hint" id="govHint"></p>
+    </section>
+
+    <div class="status-bar" id="statusBar">
+      <span class="status-dot"></span>
+      <span id="statusText">まずは対象ファイル（xlsx）を選択してください</span>
+    </div>
+
+    <section class="dropzone" id="dropzone">
+      <input type="file" id="fileInput" accept=".xlsx" hidden>
+      <div class="dropzone-inner">
+        <div class="dropzone-icon" id="dropzoneIcon">📁</div>
+        <div class="dropzone-text">
+          <span class="dropzone-title" id="dropzoneTitle">ここにxlsxファイルをドラッグ＆ドロップ</span>
+          <span class="dropzone-sub" id="dropzoneSub">またはクリックして選択</span>
+        </div>
+      </div>
+    </section>
+
+    <div class="action-row">
+      <button class="btn-primary" id="btnRun" disabled>
+        <span class="btn-icon">✨</span>別添1・別添2 を生成
+      </button>
+      <button class="btn-secondary" id="btnDownload" disabled>
+        <span class="btn-icon">⬇️</span>ダウンロード
+      </button>
+      <button class="btn-ghost" id="btnClear">クリア</button>
+      <div class="spinner" id="spinner" hidden></div>
+    </div>
+
+    <section class="glass-card log-card">
+      <div class="log-title">📜 ログ</div>
+      <pre class="log-body" id="logBody">準備が整うとここに進行状況が表示されます。</pre>
+    </section>
+  </div>
+
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
