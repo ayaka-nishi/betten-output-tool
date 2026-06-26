@@ -22,7 +22,10 @@ import zipfile
 from collections import defaultdict
 
 from flask import Flask, jsonify, render_template, request, send_file
-from openpyxl import load_workbook
+from openpyxl import Workbook, load_workbook
+from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+from openpyxl.utils import get_column_letter
+from openpyxl.worksheet.datavalidation import DataValidation
 
 # PyInstallerで.app/.exeに固めた場合、リソースは一時展開フォルダ(sys._MEIPASS)に入る
 if getattr(sys, "frozen", False):
@@ -91,9 +94,87 @@ def read_submitted_products(file_stream, area_default: str) -> dict:
     return {c: p for c, p in companies.items() if p}
 
 
+def build_template_xlsx() -> bytes:
+    """対象ファイル（証明書まとめ）の空テンプレートを生成して bytes で返す"""
+    wb = Workbook()
+    ws = wb.active
+    ws.title = SHEET_NAME
+
+    header_font = Font(name="メイリオ", bold=True, size=10, color="FFFFFF")
+    header_fill = PatternFill("solid", fgColor="2F5496")
+    center  = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    thin    = Side(style="thin", color="BFBFBF")
+    border  = Border(left=thin, right=thin, top=thin, bottom=thin)
+
+    columns = [
+        ("事業者名",       22),
+        ("No.",             5),
+        ("返礼品等の名称", 32),
+        ("価値割合",       10),
+        ("提供価格A",      14),
+        ("区域外費用B",    14),
+        ("製造・加工地",   18),
+        ("一般販売価格",   14),
+        ("担当者",         14),
+        ("提出",            8),
+        ("備考",           28),
+    ]
+
+    ws.row_dimensions[1].height = 22
+    for ci, (header, width) in enumerate(columns, start=1):
+        c = ws.cell(1, ci, value=header)
+        c.font      = header_font
+        c.fill      = header_fill
+        c.alignment = center
+        c.border    = border
+        ws.column_dimensions[get_column_letter(ci)].width = width
+
+    # 入力例（1行目）＋ 以降は数式だけ入れておく空行（500行分）
+    LAST_ROW = 500
+    example = ["（例）一般社団法人〇〇観光協会", 1, "〇〇セット", None,
+               3000, None, "宮城県石巻市", "3,000円", "山田", None, ""]
+    for row in range(2, LAST_ROW + 1):
+        for ci in range(1, 12):
+            c = ws.cell(row, ci)
+            c.border    = border
+            c.alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
+        if row == 2:
+            for ci, val in enumerate(example, start=1):
+                if ci == 4:
+                    continue   # D列（価値割合）は数式で上書きするため値は入れない
+                ws.cell(row, ci, value=val)
+
+        # D列（価値割合）＝ (E-F)/E。E未入力なら空欄表示にする
+        d = ws.cell(row, 4)
+        d.value         = f'=IF(E{row}="","",(E{row}-F{row})/E{row})'
+        d.number_format = "0.0%"
+        d.alignment     = Alignment(horizontal="center", vertical="center")
+
+    # J列（提出）にプルダウン（○・▲・✖️）を設定
+    dv = DataValidation(type="list", formula1='"○,▲,✖️"', allow_blank=True)
+    ws.add_data_validation(dv)
+    dv.add(f"J2:J{LAST_ROW}")
+
+    ws.freeze_panes = "A2"
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return buf.getvalue()
+
+
 @app.route("/")
 def index():
     return render_template("index.html", gov_labels=GOV_LABELS)
+
+
+@app.route("/template")
+def template():
+    data = build_template_xlsx()
+    return send_file(
+        io.BytesIO(data), mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        as_attachment=True, download_name="総務省3号リスト.xlsx",
+    )
 
 
 @app.route("/gov_hint")

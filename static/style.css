@@ -233,6 +233,22 @@ input[type="text"] { min-width: 220px; }
   color: var(--subtext);
 }
 
+.template-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--accent-dark);
+  text-decoration: none;
+  margin: -6px 0 16px 4px;
+  font-weight: 500;
+  transition: color .15s;
+}
+.template-link:hover {
+  color: var(--accent-2);
+  text-decoration: underline;
+}
+
 .action-row {
   display: flex;
   align-items: center;
