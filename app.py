@@ -12,6 +12,7 @@
 import importlib.util
 import io
 import os
+import secrets
 import socket
 import sys
 import tempfile
@@ -20,8 +21,9 @@ import uuid
 import webbrowser
 import zipfile
 from collections import defaultdict
+from functools import wraps
 
-from flask import Flask, jsonify, render_template, request, send_file
+from flask import Flask, Response, jsonify, render_template, request, send_file
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
@@ -52,6 +54,28 @@ app = Flask(
     template_folder=os.path.join(BASE_DIR, "templates"),
     static_folder=os.path.join(BASE_DIR, "static"),
 )
+
+# ── Basic認証（ngrok等で外部に公開する場合の最低限の保護） ─────────────
+# 環境変数で固定したい場合は BETTEN_USER / BETTEN_PASS を設定して起動する。
+# 未設定なら起動ごとにランダムなパスワードを発行し、起動時にコンソールへ表示する。
+AUTH_USER = os.environ.get("BETTEN_USER", "betten")
+AUTH_PASS = os.environ.get("BETTEN_PASS") or secrets.token_urlsafe(9)
+
+
+def _check_auth(username, password):
+    return username == AUTH_USER and password == AUTH_PASS
+
+
+@app.before_request
+def _require_basic_auth():
+    auth = request.authorization
+    if not auth or not _check_auth(auth.username, auth.password):
+        return Response(
+            "認証が必要です（Basic認証）",
+            401,
+            {"WWW-Authenticate": 'Basic realm="Betten Tool"'},
+        )
+
 
 # 生成結果（ZIP）を一時保持する（同一PC内のみ・ブラウザ閉じたら不要になる想定）
 _RESULTS: dict[str, bytes] = {}
@@ -287,5 +311,8 @@ if __name__ == "__main__":
     url  = f"http://127.0.0.1:{port}"
     threading.Timer(1.0, lambda: webbrowser.open(url)).start()
     print(f"\n別添出力ツールを起動しました: {url}")
-    print("（このウィンドウを閉じるとアプリが終了します）\n")
+    print("（このウィンドウを閉じるとアプリが終了します）")
+    print("\n--- Basic認証情報（外部公開する場合はこれを共有してください） ---")
+    print(f"  ユーザー名: {AUTH_USER}")
+    print(f"  パスワード: {AUTH_PASS}\n")
     app.run(host="127.0.0.1", port=port, debug=False)
